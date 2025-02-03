@@ -142,18 +142,17 @@ Remember:
                     loop_count += 1
                     if loop_count >= MAX_AGENT_TOOL_LOOPS:
                         print(f"\n{Colors.WARNING}Maximum number of agent-tool interactions ({MAX_AGENT_TOOL_LOOPS}) reached.{Colors.RESET}")
-                        break
+                        return
                     
                     # If no tools were found in the response, we're done
-                    if isinstance(tool_result, str):
-                        print(f"\n{Colors.AI}{tool_result}{Colors.RESET}")
-                        break
+                    if tool_result is None:
+                        return
                     
                     # After tool execution
                     if not hasattr(tool_result, 'success') or not hasattr(tool_result, 'result'):
                         logger.error(f"Invalid tool result format: {type(tool_result)}")
                         print(f"{Colors.ERROR}Invalid tool response format{Colors.RESET}")
-                        break
+                        return
 
                     # Handle tool success/failure
                     if tool_result.success:
@@ -183,7 +182,7 @@ Details: {tool_result.diagnostics.get('error', 'No additional details')}
             logger.error(f"Error processing input: {e}")
             print(f"\n{Colors.ERROR}Error: {str(e)}{Colors.RESET}")
     
-    async def _execute_tools(self, response: str) -> ToolResult | str:
+    async def _execute_tools(self, response: str) -> Optional[ToolResult]:
         """Execute tool commands found in the response."""
         from .tools import execute_tool  # Import here to avoid circular dependency
         
@@ -193,9 +192,16 @@ Details: {tool_result.diagnostics.get('error', 'No additional details')}
             conversation_history=self.conversation_state
         )
         
-        # If no tools were found, execute_tool returns the original response string
+        # If no tools were found, execute_tool returns None
+        if result is None:
+            return None
+        
+        # If we got a string result, tools were executed successfully
         if isinstance(result, str):
-            return result
+            return ToolResult(
+                success=True,
+                result=result
+            )
             
         return result if hasattr(result, 'result') else ToolResult(
             success=False,

@@ -274,7 +274,7 @@ def get_tool(operation: str, workspace_dir: Path) -> Optional[Tool]:
         return tool_class(workspace_dir)
     return None
 
-async def execute_tool(response: str, workspace_dir: Path, conversation_history=None) -> str:
+async def execute_tool(response: str, workspace_dir: Path, conversation_history=None) -> str | None:
     """Parse and execute tool commands from an AI response."""
     if isinstance(response, ErrorResult):
         return response.format_message()
@@ -285,7 +285,7 @@ async def execute_tool(response: str, workspace_dir: Path, conversation_history=
     matches = list(re.finditer(tool_pattern, response, re.DOTALL))
     
     if not matches:
-        return response
+        return None  # No tools found
 
     operation_results = []
     
@@ -360,26 +360,28 @@ async def execute_tool(response: str, workspace_dir: Path, conversation_history=
         for op in failed_ops:
             summary.append(f"- {op['tool']}: {op['result']}")
     
-    return "\n".join(summary) if summary else response
+    return "\n".join(summary) if summary else None
 
-async def execute_tools(self, response: str) -> ToolResult:
+async def execute_tools(self, response: str) -> ToolResult | None:
     """Execute tool commands found in the response."""
     from .tools import execute_tool  # Import here to avoid circular dependency
     
     try:
-        modified_response = await execute_tool(
+        result = await execute_tool(
             response,
             self.workspace_dir,
             conversation_history=self.conversation_state
         )
         
-        # If the response was modified (tools were executed), add a prompt for the agent
-        if modified_response != response:
-            modified_response += "\n\nWould you like me to do anything else with the file?"
-        
+        # If no tools were found
+        if result is None:
+            return None
+            
+        # Tools were executed successfully
+        result += "\n\nWould you like me to do anything else with the file?"
         return ToolResult(
             success=True,
-            result=modified_response
+            result=result
         )
     except Exception as e:
         return ToolResult(
