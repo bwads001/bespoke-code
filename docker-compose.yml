@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   ollama:
@@ -8,9 +8,12 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
-    # Add healthcheck to ensure Ollama is ready
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test:
+        [
+          "CMD-SHELL",
+          "timeout 5s bash -c ':> /dev/tcp/localhost/11434' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,13 +31,13 @@ services:
         condition: service_healthy
 
   bespoke_code:
-    build: 
+    build:
       context: .
       args:
         - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
     volumes:
       - ./workspace:/app/workspace
-      - ./config:/app/config  # Mount config directory for easier updates
+      - ./config:/app/config # Mount config directory for easier updates
     environment:
       - OLLAMA_HOST=ollama
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
@@ -47,4 +50,4 @@ services:
         condition: service_completed_successfully
 
 volumes:
-  ollama_data: 
+  ollama_data:

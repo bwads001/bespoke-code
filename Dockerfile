@@ -17,7 +17,7 @@ RUN mkdir -p workspace config
 
 # Copy the application code
 COPY core core/
-COPY utils.py .
+COPY config config/
 COPY bespoke_code.py .
 
 # Set environment variables
