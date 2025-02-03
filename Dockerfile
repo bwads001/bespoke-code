@@ -1,20 +1,29 @@
-FROM python:3.11-slim
+ARG PYTHON_VERSION=3.11
+FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy only the requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
-COPY . .
+# Create workspace and ensure config directory exists
+RUN mkdir -p workspace config
 
-# Create workspace directory
-RUN mkdir -p workspace
+# Copy the application code
+COPY core core/
+COPY utils.py .
+COPY bespoke_code.py .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV WORKSPACE_DIR=/app/workspace
+ENV PYTHONPATH=/app
 
 # Command to run the application
-CMD ["python", "bespoke-code.py"] 
+CMD ["python", "bespoke_code.py"] 

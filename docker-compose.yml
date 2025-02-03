@@ -19,20 +19,29 @@ services:
   ollama-init:
     image: ollama/ollama:latest
     entrypoint: ["ollama"]
-    command: ["pull", "qwen2.5-coder:7b"]
+    # Allow overriding the model via environment variable
+    command: ["pull", "${OLLAMA_MODEL:-qwen2.5-coder:7b}"]
     volumes:
       - ollama_data:/root/.ollama
     depends_on:
       ollama:
         condition: service_healthy
 
-  bespoke-code:
-    build: .
+  bespoke_code:
+    build: 
+      context: .
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
     volumes:
       - ./workspace:/app/workspace
+      - ./config:/app/config  # Mount config directory for easier updates
     environment:
       - OLLAMA_HOST=ollama
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
       - WORKSPACE_DIR=/app/workspace
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      - TEMPERATURE=${TEMPERATURE:-0.7}
     depends_on:
       ollama-init:
         condition: service_completed_successfully
